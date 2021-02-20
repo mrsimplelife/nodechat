@@ -1,0 +1,31 @@
+{
+  "name": "nodechat",
+  "version": "1.0.0",
+  "description": "nodechat",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon app"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrsimplelife/nodechat.git"
+  },
+  "author": "mrsimplelife",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrsimplelife/nodechat/issues"
+  },
+  "homepage": "https://github.com/mrsimplelife/nodechat#readme",
+  "dependencies": {
+    "cookie-parser": "^1.4.5",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "express-session": "^1.17.1",
+    "morgan": "^1.10.0",
+    "nunjucks": "^3.2.3",
+    "ws": "^7.4.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  }
+}
