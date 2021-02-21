@@ -64,9 +64,10 @@ router.get("/room/:id", async (req, res, next) => {
 
 router.delete("/room/:id", async (req, res, next) => {
   try {
-    await Room.remove({ _id: req.params.id });
-    await Chat.remove({ room: req.params.id });
+    await Room.deleteOne({ _id: req.params.id });
+    await Chat.deleteMany({ room: req.params.id });
     res.send("ok");
+    req.app.get("io").of("/room").emit("removeRoom", req.params.id);
     setTimeout(() => {
       req.app.get("io").of("/room").emit("removeRoom", req.params.id);
     }, 2000);

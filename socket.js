@@ -1,7 +1,7 @@
+const { default: axios } = require("axios");
 const cookieParser = require("cookie-parser");
-const session = require("express-session");
 const SocketIO = require("socket.io");
-
+const cookie = require("cookie-signature");
 module.exports = (server, app, sessionMiddleware) => {
   const io = SocketIO(server, { path: "/socket.io" });
 
@@ -14,6 +14,12 @@ module.exports = (server, app, sessionMiddleware) => {
   });
 
   const chat = io.of("/chat");
+  chat.use((socket, next) => {
+    cookieParser(process.env.COOKIE_SECRET)(socket.request, {}, next);
+  });
+  chat.use((socket, next) => {
+    sessionMiddleware(socket.request, {}, next);
+  });
   chat.on("connection", (socket) => {
     console.log("chat connected!!!!!");
     const req = socket.request;
@@ -25,13 +31,42 @@ module.exports = (server, app, sessionMiddleware) => {
       [referer.split("/").length - 1].replace(/\?.+/, "");
 
     socket.join(roomId);
+    socket.to(roomId).emit("join", {
+      user: "system",
+      chat: `${req.session.color} joined`,
+    });
     socket.on("disconnect", () => {
       console.log("chat disconnected!!!!!!");
       socket.leave(roomId);
+      const currentRoom = socket.adapter.rooms.get(roomId);
+      const userCount = currentRoom ? currentRoom.size : 0;
+
+      if (userCount === 0) {
+        const signedCookie = cookie.sign(
+          req.signedCookies["connect.sid"],
+          process.env.COOKIE_SECRET
+        );
+        axios
+          .delete(`http://localhost:3000/room/${roomId}`, {
+            headers: {
+              Cookie: `connect.sid=s%3A${signedCookie}`,
+            },
+          })
+          .then(() => {
+            console.log(`${roomId} deleted`);
+          })
+          .catch((err) => {
+            console.error(err);
+          });
+        socket.to(roomId).emit("exit", {
+          user: "system",
+          chat: `${req.session.color} got out`,
+        });
+      }
     });
   });
-
   app.set("io", io);
+
   // io.on("connection", (socket) => {
   //   const req = socket.request;
   //   const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
