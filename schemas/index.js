@@ -13,6 +13,7 @@ const connect = () => {
       dbName: "nodechat",
       useNewUrlParser: true,
       useCreateIndex: true,
+      useUnifiedTopology: true,
     },
     (error) => {
       if (error) {

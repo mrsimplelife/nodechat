@@ -9,8 +9,9 @@ const nunjucks = require("nunjucks");
 const WebSocket = require("./socket");
 const indexRouter = require("./routes");
 const connect = require("./schemas");
-connect();
+const ColorHash = require("color-hash");
 
+connect();
 const app = express();
 app.set("port", process.env.PORT || 3000);
 app.set("view engine", "html");
@@ -24,17 +25,24 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
-app.use(
-  session({
-    resave: false,
-    saveUninitialized: false,
-    secret: process.env.COOKIE_SECRET,
-    cookie: {
-      httpOnly: true,
-      secure: false,
-    },
-  })
-);
+const sessionMiddleware = session({
+  resave: false,
+  saveUninitialized: false,
+  secret: process.env.COOKIE_SECRET,
+  cookie: {
+    httpOnly: true,
+    secure: false,
+  },
+});
+app.use(sessionMiddleware);
+
+app.use((req, res, next) => {
+  if (!req.session.color) {
+    const colorHash = new ColorHash();
+    req.session.color = colorHash.hex(req.sessionID);
+  }
+  next();
+});
 
 app.use("/", indexRouter);
 
@@ -54,4 +62,4 @@ app.use((err, req, res, next) => {
 const server = app.listen(app.get("port"), () => {
   console.log(`http://localhost:${app.get("port")}`);
 });
-WebSocket(server);
+WebSocket(server, app, sessionMiddleware);

@@ -1,24 +1,55 @@
+const cookieParser = require("cookie-parser");
+const session = require("express-session");
 const SocketIO = require("socket.io");
-module.exports = (server) => {
+
+module.exports = (server, app, sessionMiddleware) => {
   const io = SocketIO(server, { path: "/socket.io" });
-  io.on("connection", (socket) => {
-    const req = socket.request;
-    const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-    console.log("new client", ip, socket.id, req.ip);
+
+  const room = io.of("/room");
+  room.on("connection", (socket) => {
+    console.log("room connected!!!!!");
     socket.on("disconnect", () => {
-      console.log("finish client", ip, socket.id);
-      clearInterval(socket.interval);
+      console.log("room disconnected!!!!!!");
     });
-    socket.on("error", (error) => {
-      console.log(error);
-    });
-    socket.on("reply", (error) => {
-      console.log(error);
-    });
-    socket.interval = setInterval(() => {
-      socket.emit("news", "hi");
-    }, 3000);
   });
+
+  const chat = io.of("/chat");
+  chat.on("connection", (socket) => {
+    console.log("chat connected!!!!!");
+    const req = socket.request;
+    const {
+      headers: { referer },
+    } = req;
+    const roomId = referer
+      .split("/")
+      [referer.split("/").length - 1].replace(/\?.+/, "");
+
+    socket.join(roomId);
+    socket.on("disconnect", () => {
+      console.log("chat disconnected!!!!!!");
+      socket.leave(roomId);
+    });
+  });
+
+  app.set("io", io);
+  // io.on("connection", (socket) => {
+  //   const req = socket.request;
+  //   const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  //   console.log("new client", ip, socket.id, req.ip);
+  //   socket.on("disconnect", () => {
+  //     console.log("finish client", ip, socket.id);
+  //     clearInterval(socket.interval);
+  //   });
+  //   socket.on("error", (error) => {
+  //     console.log(error);
+  //   });
+  //   socket.on("reply", (error) => {
+  //     console.log(error);
+  //   });
+  //   socket.interval = setInterval(() => {
+  //     socket.emit("news", "hi");
+  //   }, 3000);
+  // });
 };
 // const WebSocket = require("ws");
 // module.exports = (server) => {
