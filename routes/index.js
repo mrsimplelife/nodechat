@@ -1,6 +1,11 @@
 const router = require("express").Router();
 const Room = require("../schemas/room");
 const Chat = require("../schemas/chat");
+
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
 router.get("/", async (req, res, next) => {
   try {
     const rooms = await Room.find({});
@@ -50,10 +55,11 @@ router.get("/room/:id", async (req, res, next) => {
     ) {
       return res.redirect("/?error=exceeded number");
     }
+    const chats = await Chat.find({ room: room._id }).sort("createdAt");
     return res.render("chat", {
       room,
       title: room.title,
-      chats: [],
+      chats,
       user: req.session.color,
     });
   } catch (error) {
@@ -71,6 +77,54 @@ router.delete("/room/:id", async (req, res, next) => {
     setTimeout(() => {
       req.app.get("io").of("/room").emit("removeRoom", req.params.id);
     }, 2000);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+});
+
+router.post("/room/:id/chat", async (req, res, next) => {
+  try {
+    const chat = await Chat.create({
+      room: req.params.id,
+      user: req.session.color,
+      chat: req.body.chat,
+    });
+    req.app.get("io").of("/chat").to(req.params.id).emit("chat", chat);
+    res.send("ok");
+  } catch (error) {
+    console.error(error);
+    return next(error);
+  }
+});
+
+try {
+  fs.readdirSync("uploads");
+} catch (err) {
+  console.log("uploads folder does not exist");
+  fs.mkdirSync("uploads");
+}
+const uploads = multer({
+  storage: multer.diskStorage({
+    destination(req, file, done) {
+      done(null, "uploads/");
+    },
+    filename(req, file, done) {
+      const ext = path.extname(file.originalname);
+      done(null, path.basename(file.originalname, ext) + Date.now() + ext);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+router.post("/room/:id/gif", uploads.single("gif"), async (req, res, next) => {
+  try {
+    const chat = await Chat.create({
+      room: req.params.id,
+      user: req.session.color,
+      gif: req.file.filename,
+    });
+    req.app.get("io").of("/chat").to(req.params.id).emit("chat", chat);
+    res.send("ok");
   } catch (error) {
     console.error(error);
     next(error);
